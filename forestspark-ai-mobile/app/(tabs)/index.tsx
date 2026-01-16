@@ -33,11 +33,12 @@ export default function MapScreen() {
 
   try {
     setIsAnalyzing(true);
+    console.log(placeName);
 
     const res = await api.post("/scans/analyze", {
       lat: marker.latitude,
       lng: marker.longitude,
-      placeName,
+      name: placeName,
     });
 
     const scanResult = res.data;

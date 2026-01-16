@@ -20,7 +20,7 @@ export default function RegisterScreen() {
     try {
       setLoading(true);
       setError("");
-      await api.post("/auth/register", { name, email, password });
+      await api.post("/auth/register", { fullName: name, email: email, password: password });
       router.replace("/LoginScreen");
     } catch (err: any) {
       setError(err?.response?.data?.message || "Registration failed");

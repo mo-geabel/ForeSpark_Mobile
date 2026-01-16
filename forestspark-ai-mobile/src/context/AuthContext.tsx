@@ -14,31 +14,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadAuth();
   }, []);
 
+  // ✅ UPDATED: validate token with backend
   const loadAuth = async () => {
     try {
       const storedToken = await AsyncStorage.getItem("token");
       const storedUser = await AsyncStorage.getItem("user");
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+      if (!storedToken || !storedUser) {
+        logout();
+        return;
       }
+
+      // 🔐 Validate token
+      const res = await api.get("/auth/user", {
+        headers: {
+          "x-auth-token": storedToken,
+        },
+      });
+
+      setToken(storedToken);
+      setUser(res.data); // always trust backend, not local storage
     } catch (err) {
-      console.log("Auth load error:", err);
+      console.log("Token invalid or expired");
+      await logout();
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
-    console.log(email, password);
     const res = await api.post("/auth/login", { email, password });
+
     await AsyncStorage.setItem("token", res.data.token);
     await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
 
     setToken(res.data.token);
     setUser(res.data.user);
-    console.log(user);
   };
 
   const register = async (name: string, email: string, password: string) => {

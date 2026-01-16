@@ -13,6 +13,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ThumbsUp, ThumbsDown } from "lucide-react-native";
 import { useAuth } from "../src/context/AuthContext";
 import api from "@/src/api/axios";
+import * as Location from "expo-location";
+import { useEffect } from "react";
+import { KeyboardAvoidingView, Platform } from "react-native";
+
 
 const { width } = Dimensions.get("window");
 
@@ -23,6 +27,45 @@ export default function AnalysisScreen() {
   
   // Parse data and handle null case
   const data = scan ? JSON.parse(scan as string) : null;
+
+  const centerPoint =
+    data?.grid_data?.find((p: any) => p.label === "CENTER") ||
+    data?.grid_data?.[0];
+  const [placeName, setPlaceName] = useState<string>("Resolving location...");
+  useEffect(() => {
+  if (!centerPoint?.lat || !centerPoint?.lng) return;
+
+  (async () => {
+    try {
+      const res = await Location.reverseGeocodeAsync({
+        latitude: centerPoint.lat,
+        longitude: centerPoint.lng,
+      });
+
+      if (res.length > 0) {
+        const place = res[0];
+
+        const name =
+          place.name ||
+          place.street ||
+          place.city ||
+          place.region ||
+          "Unknown location";
+
+        setPlaceName(
+          `${name}${place.city ? ", " + place.city : ""}${
+            place.country ? ", " + place.country : ""
+          }`
+        );
+      } else {
+        setPlaceName("Unknown location");
+      }
+    } catch (e) {
+      console.warn("Reverse geocoding failed", e);
+      setPlaceName("Unknown location");
+    }
+  })();
+}, [centerPoint]);
 
   // Feedback State
   const [feedback, setFeedback] = useState<boolean | null>(null);
@@ -37,45 +80,52 @@ export default function AnalysisScreen() {
     );
   }
 
-  const centerPoint =
-    data.grid_data?.find((p: any) => p.label === "CENTER") ||
-    data.grid_data?.[0];
 
-  const handleSave = async () => {
 
-    setIsSaving(true);
-    try {
-      // Note: If using Android Emulator, 10.0.2.2 is correct. 
-      // If using physical device, replace with your local IP.
-      const response = await api.patch(`scans/feedback/${data._id}`, {
+const handleSave = async () => {
+  if (!data) return;
+
+  setIsSaving(true);
+
+  try {
+    await api.patch(
+      `scans/feedback/${data._id}`,
+      {
+        isCorrect: feedback,
+        notes,
+      },
+      {
         headers: {
           "Content-Type": "application/json",
-          "x-auth-token": token || "" 
+          "x-auth-token": token || "",
         },
-        data: { isCorrect: feedback, notes }
-      });
-
-      if (response.status === 200) {
-        // Ensure this route matches your file structure exactly (e.g., (tabs)/history)
-        router.push("/HistoryScreen");
-      } else {
-        const errData = await response.data;
-        Alert.alert("Save Failed", errData.message || "Could not save feedback.");
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Connection Error", "Could not reach the server.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    );
+
+    // Same as navigate("/history")
+    router.push("/HistoryScreen");
+
+  } catch (error) {
+    console.error("Save feedback error:", error);
+    Alert.alert("Error", "Failed to save feedback.");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   return (
+    <KeyboardAvoidingView
+  style={{ flex: 1 }}
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+>
+
     <ScrollView 
       contentContainerStyle={styles.scrollContainer} 
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled" // Ensures buttons work even if keyboard is open
-    >
+      >
       {/* AI Verdict Card */}
       <View style={styles.card}>
         <Text style={styles.label}>AI VERDICT</Text>
@@ -117,18 +167,24 @@ export default function AnalysisScreen() {
 
      {/* Spatial Intelligence Grid */}
 <Text style={styles.sectionTitle}>Spatial Intelligence</Text>
+<View style={styles.coordBadge}>
+  <Text style={styles.placeText}>{placeName}</Text>
+  <Text style={styles.coordText}>
+    {centerPoint.lat.toFixed(5)} , {centerPoint.lng.toFixed(5)}
+  </Text>
+</View>
 <View style={styles.grid}>
   {data.grid_data.map((point: any, i: number) => {
     const pct = point.individual_prob * 100;
     const isHigh = pct > 40;
-
+    
     return (
       <View
-        key={i}
-        style={[
-          styles.cell,
-          isHigh ? styles.cellHigh : styles.cellLow
-        ]}
+      key={i}
+      style={[
+        styles.cell,
+        isHigh ? styles.cellHigh : styles.cellLow
+      ]}
       >
         <Text style={styles.cellLabel}>{point.label}</Text>
         
@@ -148,7 +204,7 @@ export default function AnalysisScreen() {
                   opacity: 0.9
                 }
               ]} 
-            />
+              />
           </View>
         </View>
       </View>
@@ -187,7 +243,7 @@ export default function AnalysisScreen() {
           onChangeText={setNotes}
           multiline={true}
           blurOnSubmit={true}
-        />
+          />
       </View>
 
       {/* Action Buttons */}
@@ -206,7 +262,9 @@ export default function AnalysisScreen() {
           <Text style={styles.discardBtnText}>DISCARD SCAN</Text>
         </TouchableOpacity>
       </View>
+      
     </ScrollView> 
+</KeyboardAvoidingView>
   );
 }
 
@@ -420,4 +478,12 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
+  placeText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#1e293b",
+  marginBottom: 2,
+  textAlign: "center",
+},
+
 });

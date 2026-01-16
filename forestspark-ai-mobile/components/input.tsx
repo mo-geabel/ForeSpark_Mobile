@@ -1,8 +1,17 @@
 import { TextInput, StyleSheet } from "react-native";
 
 export default function Input(props: any) {
-  return <TextInput {...props} style={[styles.input, props.style]} />;
+  return (
+    <TextInput
+      {...props}
+      value={props.value ?? ""} // IMPORTANT
+      placeholder={props.placeholder}
+      placeholderTextColor="#94a3b8" // REQUIRED
+      style={styles.input}
+    />
+  );
 }
+
 
 const styles = StyleSheet.create({
   input: {

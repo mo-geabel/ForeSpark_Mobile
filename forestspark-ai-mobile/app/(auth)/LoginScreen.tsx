@@ -1,4 +1,12 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from "react-native";
 import { useState } from "react";
 import { useAuth } from "../../src/context/AuthContext";
 import { router } from "expo-router";
@@ -21,7 +29,6 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       setError("");
-      // console.log(email, password);
       await login(email, password);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Login failed");
@@ -31,42 +38,44 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ForestSpark AI</Text>
-      <Text style={styles.subtitle}>Login</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <Text style={styles.title}>ForestSpark AI</Text>
+        <Text style={styles.subtitle}>Login</Text>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Input
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <Input
+          placeholder="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-      <Input
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <Input
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <Pressable style={styles.button} onPress={handleLogin}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </Pressable>
+        <Pressable style={styles.button} onPress={handleLogin}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
+        </Pressable>
 
-      <Pressable onPress={() => router.push("/RegisterScreen")}>
-        <Text style={styles.link}>Don't have an account? Register</Text>
-      </Pressable>
-    </View>
+        <Pressable onPress={() => router.push("/RegisterScreen")}>
+          <Text style={styles.link}>Don't have an account? Register</Text>
+        </Pressable>
+      </View>
+    </TouchableWithoutFeedback>
   );
-
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
