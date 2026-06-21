@@ -3,12 +3,18 @@ import { useState } from "react";
 import { router } from "expo-router";
 import Input from "../../components/input";
 import api from "../../src/api/axios";
+import { useAuth } from "../../src/context/AuthContext";
+import GoogleButton from "../../components/GoogleButton";
+import { signInWithGoogle } from "../../src/utils/googleAuth";
 
 export default function RegisterScreen() {
+  const { loginWithGoogle } = useAuth();
+  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleRegister = async () => {
@@ -26,6 +32,27 @@ export default function RegisterScreen() {
       setError(err?.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      setError("");
+
+      const token = await signInWithGoogle(async (mockToken) => {
+        await loginWithGoogle(mockToken);
+      });
+
+      if (token) {
+        await loginWithGoogle(token);
+      }
+    } catch (err: any) {
+      if (err?.code !== "12501" && err?.message !== "Sign in cancelled") {
+        setError(err?.response?.data?.message || err?.message || "Google registration failed");
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -50,7 +77,7 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
       />
 
-      <Pressable style={styles.button} onPress={handleRegister}>
+      <Pressable style={styles.button} onPress={handleRegister} disabled={loading || googleLoading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -58,7 +85,15 @@ export default function RegisterScreen() {
         )}
       </Pressable>
 
-      <Pressable onPress={() => router.back()}>
+      <View style={styles.dividerContainer}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <GoogleButton onPress={handleGoogleSignIn} loading={googleLoading} text="Register with Google" />
+
+      <Pressable onPress={() => router.back()} disabled={loading || googleLoading}>
         <Text style={styles.link}>Back to Login</Text>
       </Pressable>
     </View>
@@ -99,6 +134,21 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E4E4E7",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#71717A",
+    fontSize: 14,
   },
   link: {
     marginTop: 16,

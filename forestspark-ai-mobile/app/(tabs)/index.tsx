@@ -259,28 +259,33 @@ const styles = StyleSheet.create({
 
   searchContainer: {
     position: "absolute",
-    top: 50,
-    width: "90%",
-    alignSelf: "center",
+    top: 56,
+    left: 16,
+    width: "62%",
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 10,
     elevation: 5,
     zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
 
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 34,
+    fontSize: 13,
     color: "#000",
   },
 
   clearText: {
-    fontSize: 18,
-    paddingHorizontal: 8,
-    color: "#000",
+    fontSize: 14,
+    paddingHorizontal: 6,
+    color: "#64748b",
   },
 
   gpsButton: {

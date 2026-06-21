@@ -1,9 +1,10 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "../utils/config";
 
 const api = axios.create({
-  baseURL: "http://10.7.84.82:5000/api",
-  timeout: 10000,
+  baseURL: API_URL,
+  timeout: 120000, // 2 minutes — AI prediction across 9 tiles takes 30-90s
 });
 
 api.interceptors.request.use(

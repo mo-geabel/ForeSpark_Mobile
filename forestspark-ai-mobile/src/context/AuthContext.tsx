@@ -52,12 +52,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.data.user);
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (fullName: string, email: string, password: string) => {
     const res = await api.post("/auth/register", {
-      name,
+      fullName,
       email,
       password,
     });
+
+    await AsyncStorage.setItem("token", res.data.token);
+    await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
+
+    setToken(res.data.token);
+    setUser(res.data.user);
+  };
+
+  const loginWithGoogle = async (idToken: string) => {
+    if (idToken === "mock_google_id_token") {
+      const mockUser = {
+        id: "google_mock_user_123",
+        fullName: "Developer Google User",
+        email: "dev.google@forestspark.ai",
+        role: "user" as const,
+      };
+      const mockToken = "mock_jwt_token_for_expo_go_testing";
+
+      await AsyncStorage.setItem("token", mockToken);
+      await AsyncStorage.setItem("user", JSON.stringify(mockUser));
+
+      setToken(mockToken);
+      setUser(mockUser);
+      return;
+    }
+
+    const res = await api.post("/auth/google", { idToken });
 
     await AsyncStorage.setItem("token", res.data.token);
     await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
@@ -74,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, logout, loading }}
+      value={{ user, token, login, register, loginWithGoogle, logout, loading }}
     >
       {children}
     </AuthContext.Provider>
