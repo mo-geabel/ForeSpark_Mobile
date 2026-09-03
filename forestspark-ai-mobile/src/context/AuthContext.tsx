@@ -1,99 +1,189 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth as useClerkAuth, useUser as useClerkUser } from "@clerk/clerk-expo";
 import api from "../api/axios";
 import { AuthContextType, User } from "../types/auth";
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isSignedIn, getToken, signOut, isLoaded: isClerkLoaded } = useClerkAuth();
+  const { user: clerkUser } = useClerkUser();
+
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAuth();
-  }, []);
-
-  // ✅ UPDATED: validate token with backend
-  const loadAuth = async () => {
+  const refreshUser = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem("token");
-      const storedUser = await AsyncStorage.getItem("user");
+      const activeToken = token || (await AsyncStorage.getItem("token"));
+      if (!activeToken) return;
 
-      if (!storedToken || !storedUser) {
-        logout();
-        return;
-      }
-
-      // 🔐 Validate token
       const res = await api.get("/auth/user", {
-        headers: {
-          "x-auth-token": storedToken,
-        },
+        headers: { "x-auth-token": activeToken },
       });
 
-      setToken(storedToken);
-      setUser(res.data); // always trust backend, not local storage
+      if (res.data) {
+        if (res.data.isPaused) {
+          await logout();
+          return;
+        }
+
+        const updatedUser: User = {
+          id: res.data._id || res.data.id || user?.id || "",
+          fullName: res.data.fullName || user?.fullName || "User",
+          email: res.data.email || user?.email || "",
+          role: res.data.role || "user",
+          isPaused: !!res.data.isPaused,
+        };
+
+        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
     } catch (err) {
-      console.log("Token invalid or expired");
-      await logout();
-    } finally {
-      setLoading(false);
+      console.log("Could not refresh user profile:", err);
     }
   };
 
+  // Sync Clerk authentication state
+  useEffect(() => {
+    const syncAuthState = async () => {
+      if (!isClerkLoaded) return;
+
+      if (isSignedIn && clerkUser) {
+        try {
+          const sessionToken = await getToken();
+          const primaryEmail = clerkUser.primaryEmailAddress?.emailAddress || "";
+          const fullName =
+            [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+            clerkUser.username ||
+            "User";
+
+          let appUser: User = {
+            id: clerkUser.id,
+            fullName,
+            email: primaryEmail,
+            role: "user",
+            isPaused: false,
+          };
+
+          if (sessionToken) {
+            await AsyncStorage.setItem("token", sessionToken);
+            setToken(sessionToken);
+
+            // Fetch true role and pause status from backend
+            try {
+              const res = await api.get("/auth/user", {
+                headers: { 
+                  "x-auth-token": sessionToken,
+                  "Authorization": `Bearer ${sessionToken}`,
+                  "x-user-email": primaryEmail
+                },
+              });
+              if (res.data) {
+                if (res.data.isPaused) {
+                  await signOut();
+                  await AsyncStorage.clear();
+                  setUser(null);
+                  setToken(null);
+                  setLoading(false);
+                  return;
+                }
+
+                appUser = {
+                  id: res.data._id || clerkUser.id,
+                  fullName: res.data.fullName || fullName,
+                  email: res.data.email || primaryEmail,
+                  role: res.data.role || "user",
+                  isPaused: !!res.data.isPaused,
+                };
+              }
+            } catch (profileErr: any) {
+              console.log("Could not fetch backend profile on Clerk sync:", profileErr?.message || profileErr);
+            }
+          }
+          await AsyncStorage.setItem("user", JSON.stringify(appUser));
+          setUser(appUser);
+        } catch (err) {
+          console.error("Error syncing Clerk auth session:", err);
+        }
+      } else {
+        // Check for local legacy token if not signed in through Clerk
+        const storedToken = await AsyncStorage.getItem("token");
+        const storedUser = await AsyncStorage.getItem("user");
+
+        if (storedToken && storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setToken(storedToken);
+            setUser(parsedUser);
+
+            // Background sync latest role and pause status
+            api.get("/auth/user", { headers: { "x-auth-token": storedToken } })
+              .then(async (res) => {
+                if (res.data) {
+                  if (res.data.isPaused) {
+                    await logout();
+                    return;
+                  }
+                  const refreshed: User = {
+                    id: res.data._id || parsedUser.id,
+                    fullName: res.data.fullName || parsedUser.fullName,
+                    email: res.data.email || parsedUser.email,
+                    role: res.data.role || "user",
+                    isPaused: !!res.data.isPaused,
+                  };
+                  await AsyncStorage.setItem("user", JSON.stringify(refreshed));
+                  setUser(refreshed);
+                }
+              })
+              .catch(() => {});
+          } catch {
+            await logout();
+          }
+        } else {
+          setUser(null);
+          setToken(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    syncAuthState();
+  }, [isSignedIn, clerkUser, isClerkLoaded]);
+
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
-
     await AsyncStorage.setItem("token", res.data.token);
     await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
-
     setToken(res.data.token);
     setUser(res.data.user);
   };
 
   const register = async (fullName: string, email: string, password: string) => {
-    const res = await api.post("/auth/register", {
-      fullName,
-      email,
-      password,
-    });
-
+    const res = await api.post("/auth/register", { fullName, email, password });
     await AsyncStorage.setItem("token", res.data.token);
     await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
-
     setToken(res.data.token);
     setUser(res.data.user);
   };
 
   const loginWithGoogle = async (idToken: string) => {
-    if (idToken === "mock_google_id_token") {
-      const mockUser = {
-        id: "google_mock_user_123",
-        fullName: "Developer Google User",
-        email: "dev.google@forestspark.ai",
-        role: "user" as const,
-      };
-      const mockToken = "mock_jwt_token_for_expo_go_testing";
-
-      await AsyncStorage.setItem("token", mockToken);
-      await AsyncStorage.setItem("user", JSON.stringify(mockUser));
-
-      setToken(mockToken);
-      setUser(mockUser);
-      return;
-    }
-
     const res = await api.post("/auth/google", { idToken });
-
     await AsyncStorage.setItem("token", res.data.token);
     await AsyncStorage.setItem("user", JSON.stringify(res.data.user));
-
     setToken(res.data.token);
     setUser(res.data.user);
   };
 
   const logout = async () => {
+    try {
+      if (isSignedIn) {
+        await signOut();
+      }
+    } catch (err) {
+      console.error("SignOut error:", err);
+    }
     await AsyncStorage.clear();
     setUser(null);
     setToken(null);
@@ -101,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, loginWithGoogle, logout, loading }}
+      value={{ user, token, login, register, loginWithGoogle, logout, refreshUser, loading }}
     >
       {children}
     </AuthContext.Provider>

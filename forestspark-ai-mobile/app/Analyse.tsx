@@ -23,8 +23,10 @@ import * as Location from "expo-location";
 
 const { width, height } = Dimensions.get("window");
 
-const GRID_GAP = 2;
-const CELL_SIZE = (width - GRID_GAP * 2) / 3;
+const GRID_MARGIN = 16;
+const GRID_GAP = 8;
+const GRID_CONTAINER_WIDTH = width - GRID_MARGIN * 2;
+const CELL_SIZE = (GRID_CONTAINER_WIDTH - GRID_GAP * 2) / 3;
 
 const DIRECTION_LABELS: Record<string, string> = {
   NW: "NW", N: "N", NE: "NE",
@@ -251,7 +253,7 @@ export default function AnalysisScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* 3×3 edge-to-edge photo grid */}
+            {/* 3×3 Rounded Card Grid */}
             <View style={styles.imageGrid}>
               {data.grid_data.map((point, i) => {
                 const pct = point.individual_prob * 100;
@@ -262,9 +264,13 @@ export default function AnalysisScreen() {
                 return (
                   <TouchableOpacity
                     key={i}
-                    style={[styles.cell, isSelected && styles.cellSelected]}
+                    style={[
+                      styles.cell,
+                      isSelected && styles.cellSelected,
+                      isHigh ? styles.cellHighRiskBorder : styles.cellLowRiskBorder,
+                    ]}
                     onPress={() => setSelectedCell(isSelected ? null : point)}
-                    activeOpacity={0.9}
+                    activeOpacity={0.85}
                   >
                     {/* Image */}
                     {imageUri ? (
@@ -275,36 +281,31 @@ export default function AnalysisScreen() {
                       />
                     ) : (
                       <View style={[StyleSheet.absoluteFillObject, styles.cellPlaceholder,
-                        isHigh ? { backgroundColor: "#fecaca" } : { backgroundColor: "#bbf7d0" }]}>
-                        <ActivityIndicator color="rgba(0,0,0,0.3)" size="small" />
+                        isHigh ? { backgroundColor: "#fee2e2" } : { backgroundColor: "#dcfce7" }]}>
+                        <ActivityIndicator color={isHigh ? "#ef4444" : "#10b981"} size="small" />
                       </View>
                     )}
 
-
                     {/* Direction badge top-left */}
-                    <View style={[styles.dirBadge, isSelected && { backgroundColor: isHighRisk ? "#ef4444" : "#059669" }]}>
+                    <View style={[styles.dirBadge, isSelected && styles.dirBadgeSelected]}>
                       <Text style={[styles.dirText, isSelected && { color: "#fff" }]}>
                         {DIRECTION_LABELS[point.label] || point.label}
                       </Text>
                     </View>
 
-                    {/* Risk % bottom-left */}
-                    <View style={styles.cellFooter}>
-                      <Text style={[styles.cellPct, { color: isHigh ? "#fbbf24" : "#6ee7b7" }]}>
+                    {/* Center point marker badge */}
+                    {point.label === "CENTER" && (
+                      <View style={styles.centerBadge}>
+                        <View style={styles.centerDot} />
+                      </View>
+                    )}
+
+                    {/* Risk % bottom badge */}
+                    <View style={[styles.cellPctBadge, isHigh ? styles.cellPctBadgeHigh : styles.cellPctBadgeLow]}>
+                      <Text style={[styles.cellPct, isHigh ? styles.cellPctTextHigh : styles.cellPctTextLow]}>
                         {pct.toFixed(0)}%
                       </Text>
-                      <View style={styles.cellTrack}>
-                        <View
-                          style={[styles.cellFill, {
-                            width: `${pct}%`,
-                            backgroundColor: isHigh ? "#fb923c" : "#34d399",
-                          }]}
-                        />
-                      </View>
                     </View>
-
-                    {/* Selection highlight border */}
-                    {isSelected && <View style={styles.cellBorder} />}
                   </TouchableOpacity>
                 );
               })}
@@ -520,48 +521,117 @@ const styles = StyleSheet.create({
   togglePillTextActive: { color: "#fff" },
 
   imageGrid: {
-    flexDirection: "row", flexWrap: "wrap",
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: GRID_GAP,
-    // No horizontal padding — edge to edge
+    paddingHorizontal: GRID_MARGIN,
+    paddingTop: 8,
+    paddingBottom: 14,
+    justifyContent: "center",
   },
   cell: {
-    width: CELL_SIZE, height: CELL_SIZE,
+    width: CELL_SIZE,
+    height: CELL_SIZE,
+    borderRadius: 12,
     overflow: "hidden",
     position: "relative",
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1.5,
   },
-  cellSelected: { opacity: 0.95 },
-  cellPlaceholder: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center" },
-  cellBottomOverlay: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    height: CELL_SIZE * 0.45,
-    backgroundColor: "rgba(0,0,0,0.52)",
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+  cellLowRiskBorder: {
+    borderColor: "#e2e8f0",
+  },
+  cellHighRiskBorder: {
+    borderColor: "#fca5a5",
+  },
+  cellSelected: {
+    borderColor: "#059669",
+    borderWidth: 2.5,
+    zIndex: 10,
+  },
+  cellPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
   },
   dirBadge: {
-    position: "absolute", top: 7, left: 7,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+    position: "absolute",
+    top: 6,
+    left: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  dirText: { fontSize: 8, fontWeight: "900", color: "#0f172a" },
-  cellFooter: { position: "absolute", bottom: 7, left: 7, right: 7 },
-  cellPct: { fontSize: 15, fontWeight: "900" },
-  cellTrack: {
-    height: 3, backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 2, marginTop: 3, overflow: "hidden",
+  dirBadgeSelected: {
+    backgroundColor: "#059669",
   },
-  cellFill: { height: "100%", borderRadius: 2 },
-  cellBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 2.5, borderColor: "#fff", borderRadius: 0,
+  dirText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#1e293b",
+  },
+  centerBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  centerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#059669",
+  },
+  cellPctBadge: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  cellPctBadgeLow: {
+    backgroundColor: "rgba(240, 253, 244, 0.95)",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+  },
+  cellPctBadgeHigh: {
+    backgroundColor: "rgba(254, 242, 242, 0.95)",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+  },
+  cellPct: {
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  cellPctTextLow: {
+    color: "#15803d",
+  },
+  cellPctTextHigh: {
+    color: "#b91c1c",
   },
   modeHint: {
-    paddingHorizontal: 20, paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     backgroundColor: "#f8fafc",
-    borderTopWidth: 1, borderTopColor: "#f1f5f9",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
-  modeHintText: { fontSize: 10, color: "#94a3b8", lineHeight: 15 },
+  modeHintText: {
+    fontSize: 11,
+    color: "#64748b",
+    lineHeight: 16,
+    textAlign: "center",
+  },
 
   // ─── Detail Card ───
   detailCard: {

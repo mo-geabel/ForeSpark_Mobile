@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -8,13 +8,18 @@ import {
   TextInput,
   Keyboard,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 import MapView, { Marker, MapPressEvent, Region, Callout } from "react-native-maps";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import api from "../../src/api/axios";
+import { Search, X, Crosshair, Globe, Satellite, Compass, Sparkles, MapPin } from "lucide-react-native";
 
 export default function MapScreen() {
+  const mapRef = useRef<MapView | null>(null);
+  const markerRef = useRef<any>(null);
+
   const [region, setRegion] = useState<Region>({
     latitude: 39.9334,
     longitude: 32.8597,
@@ -25,6 +30,7 @@ export default function MapScreen() {
   const [marker, setMarker] = useState<{ latitude: number; longitude: number } | null>(null);
   const [mapType, setMapType] = useState<"standard" | "satellite" | "hybrid">("standard");
   const [search, setSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [placeName, setPlaceName] = useState<string>("Selected location");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const router = useRouter();
@@ -87,52 +93,127 @@ export default function MapScreen() {
 
   // 🔍 Search
   const handleSearch = async () => {
-    if (!search) return;
+    const query = search.trim();
+    if (!query) return;
 
-    const result = await Location.geocodeAsync(search);
-    if (!result.length) return;
-
-    const { latitude, longitude } = result[0];
-
-    setRegion({
-      latitude,
-      longitude,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
-    });
-
-    setMarker({ latitude, longitude });
     Keyboard.dismiss();
-    setPlaceName(search || "Current location");
+    setIsSearching(true);
 
+    try {
+      let targetLat: number | null = null;
+      let targetLng: number | null = null;
+      let resolvedName = query;
+
+      // 1. Direct coordinate check: "lat, lng" (e.g., "39.93, 32.85" or "39.93 32.85")
+      const coordRegex = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
+      const coordMatch = query.match(coordRegex);
+
+      if (coordMatch) {
+        targetLat = parseFloat(coordMatch[1]);
+        targetLng = parseFloat(coordMatch[3]);
+        resolvedName = `Coords: ${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`;
+      } else {
+        // 2. Try Expo native geocoder
+        try {
+          const expoResults = await Location.geocodeAsync(query);
+          if (expoResults && expoResults.length > 0) {
+            targetLat = expoResults[0].latitude;
+            targetLng = expoResults[0].longitude;
+          }
+        } catch (e) {
+          console.log("Expo geocode error, attempting OSM fallback...", e);
+        }
+
+        // 3. Fallback to OpenStreetMap Nominatim geocoder (worldwide coverage)
+        if (targetLat === null || targetLng === null) {
+          try {
+            const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+              query
+            )}&format=json&limit=1`;
+            const res = await fetch(osmUrl, {
+              headers: { "User-Agent": "ForeSpark-Mobile-App" },
+            });
+            const data = await res.json();
+            if (data && data.length > 0) {
+              targetLat = parseFloat(data[0].lat);
+              targetLng = parseFloat(data[0].lon);
+              resolvedName = data[0].name || data[0].display_name?.split(",")?.[0] || query;
+            }
+          } catch (osmErr) {
+            console.warn("OSM geocode error:", osmErr);
+          }
+        }
+      }
+
+      if (targetLat !== null && targetLng !== null) {
+        const newRegion = {
+          latitude: targetLat,
+          longitude: targetLng,
+          latitudeDelta: 0.04,
+          longitudeDelta: 0.04,
+        };
+
+        setRegion(newRegion);
+        setMarker({ latitude: targetLat, longitude: targetLng });
+        setPlaceName(resolvedName);
+
+        // Smoothly animate map camera to the found place
+        mapRef.current?.animateToRegion(newRegion, 1000);
+
+        // Auto-show marker callout balloon
+        setTimeout(() => {
+          markerRef.current?.showCallout();
+        }, 500);
+      } else {
+        alert(`Could not find "${query}". Please check the spelling or enter coordinates (lat, lng).`);
+      }
+    } catch (err) {
+      console.error("Search execution failed:", err);
+      alert("Error searching for location. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // 📌 Map press
-const handleMapPress = async (e: MapPressEvent) => {
-  const { latitude, longitude } = e.nativeEvent.coordinate;
+  const handleMapPress = async (e: MapPressEvent) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
 
-  setMarker({ latitude, longitude });
+    setMarker({ latitude, longitude });
 
-  // Try to get place name
-  const result = await Location.reverseGeocodeAsync({
-    latitude,
-    longitude,
-  });
+    // Automatically trigger callout balloon like web InfoWindow
+    setTimeout(() => {
+      markerRef.current?.showCallout();
+    }, 100);
 
-  if (result.length > 0) {
-    const place =
-      result[0].name ||
-      result[0].street ||
-      result[0].city ||
-      "Dropped location";
+    try {
+      const result = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
 
-    setPlaceName(place);
-  } else {
-    setPlaceName("Dropped location");
-  }
+      if (result.length > 0) {
+        const place =
+          result[0].name ||
+          result[0].street ||
+          result[0].city ||
+          "Dropped location";
 
-  Keyboard.dismiss();
-};
+        setPlaceName(place);
+      } else {
+        setPlaceName("Dropped location");
+      }
+    } catch {
+      setPlaceName("Dropped location");
+    }
+
+    // Refresh callout with resolved place name
+    setTimeout(() => {
+      markerRef.current?.showCallout();
+    }, 400);
+
+    Keyboard.dismiss();
+  };
 
 
   return (
@@ -140,70 +221,78 @@ const handleMapPress = async (e: MapPressEvent) => {
       <View style={styles.container}>
         {/* 🔍 Search Bar */}
         <View style={styles.searchContainer}>
+          <TouchableOpacity
+            onPress={handleSearch}
+            disabled={isSearching}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.searchIconBtn}
+          >
+            {isSearching ? (
+              <ActivityIndicator size="small" color="#059669" />
+            ) : (
+              <Search size={18} color="#059669" strokeWidth={2.2} />
+            )}
+          </TouchableOpacity>
+
           <TextInput
-            placeholder="Search location..."
-            placeholderTextColor="#000"
+            placeholder="Search place or paste coords..."
+            placeholderTextColor="#94a3b8"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={handleSearch}
+            returnKeyType="search"
             style={styles.searchInput}
           />
 
           {search.length > 0 && (
-            <>
-              <TouchableOpacity
-                onPress={() => {
-                  setSearch("");
-                  setMarker(null);
-                  Keyboard.dismiss();
-                }}
-              >
-                <Text style={styles.clearText}>✕</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={Keyboard.dismiss}>
-                <Text style={styles.clearText}>⌨️</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              onPress={() => {
+                setSearch("");
+                setMarker(null);
+                Keyboard.dismiss();
+              }}
+              style={styles.clearBtn}
+            >
+              <X size={16} color="#94a3b8" />
+            </TouchableOpacity>
           )}
         </View>
 
         {/* 🗺 Map */}
         <MapView
+          ref={mapRef}
           style={styles.map}
           region={region}
           mapType={mapType}
           onPress={handleMapPress}
         >
           {marker && (
-  <Marker coordinate={marker}>
-    <Callout tooltip>
-      <View style={styles.calloutContainer}>
-        <Text style={styles.calloutLabel}>LOCATION FOUND</Text>
-
-        <Text style={styles.placeName}>
-          {placeName || "Identifying terrain..."}
-        </Text>
-
-        <View style={styles.coordsBox}>
-          <Text style={styles.coordText}>
-            LAT: {marker.latitude.toFixed(5)}
-          </Text>
-          <Text style={styles.coordText}>
-            LNG: {marker.longitude.toFixed(5)}
-          </Text>
-        </View>
-      </View>
-    </Callout>
-  </Marker>
-)}
-
-
+            <Marker
+              ref={markerRef}
+              coordinate={marker}
+            >
+              <Callout tooltip={false}>
+                <View style={styles.webInfoWindowCard}>
+                  <Text style={styles.webInfoBadge}>LOCATION FOUND</Text>
+                  <Text style={styles.webInfoPlace} numberOfLines={2}>
+                    {placeName || "Identifying terrain..."}
+                  </Text>
+                  <View style={styles.webInfoCoords}>
+                    <Text style={styles.webInfoCoordText}>LAT: {marker.latitude.toFixed(5)}</Text>
+                    <Text style={styles.webInfoCoordText}>LNG: {marker.longitude.toFixed(5)}</Text>
+                  </View>
+                </View>
+              </Callout>
+            </Marker>
+          )}
         </MapView>
 
-        {/* 📍 GPS */}
-        <TouchableOpacity style={styles.gpsButton} onPress={getCurrentLocation}>
-          <Text style={styles.buttonText}>📍</Text>
+        {/* 📍 GPS Button */}
+        <TouchableOpacity
+          style={styles.gpsButton}
+          onPress={getCurrentLocation}
+        >
+          <Crosshair size={20} color="#334155" strokeWidth={2} />
         </TouchableOpacity>
 
         {/* 🗺 Map Type (LEFT) */}
@@ -212,39 +301,81 @@ const handleMapPress = async (e: MapPressEvent) => {
             style={[styles.mapTypeButton, mapType === "standard" && styles.activeMapType]}
             onPress={() => setMapType("standard")}
           >
-            <Text style={styles.mapTypeText}>🌍</Text>
+            <Globe
+              size={18}
+              color={mapType === "standard" ? "#fff" : "#475569"}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.mapTypeButton, mapType === "satellite" && styles.activeMapType]}
             onPress={() => setMapType("satellite")}
           >
-            <Text style={styles.mapTypeText}>🛰️</Text>
+            <Satellite
+              size={18}
+              color={mapType === "satellite" ? "#fff" : "#475569"}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.mapTypeButton, mapType === "hybrid" && styles.activeMapType]}
             onPress={() => setMapType("hybrid")}
           >
-            <Text style={styles.mapTypeText}>🧭</Text>
+            <Compass
+              size={18}
+              color={mapType === "hybrid" ? "#fff" : "#475569"}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* 🔥 Analyze */}
-   {marker && (
-  <TouchableOpacity
-    style={[
-      styles.analyzeButton,
-      isAnalyzing && { opacity: 0.6 },
-    ]}
-    onPress={handleAnalyze}
-    disabled={isAnalyzing}
-  >
-    <Text style={styles.analyzeText}>
-      {isAnalyzing ? "Analyzing..." : "Analyze"}
-    </Text>
-  </TouchableOpacity>
-)}
+        {/* 🔥 Web-Style InfoWindow & Analyze Fire Risk Container */}
+        {marker && (
+          <View style={styles.webBottomContainer}>
+            {/* InfoWindow Card matching Web MapSelector.tsx */}
+            <View style={styles.webInfoWindowCard}>
+              <View style={styles.webInfoHeader}>
+                <Text style={styles.webInfoBadge}>LOCATION FOUND</Text>
+                <TouchableOpacity
+                  onPress={() => setMarker(null)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <X size={14} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.webInfoPlace} numberOfLines={2}>
+                {placeName || "Identifying terrain..."}
+              </Text>
+
+              <View style={styles.webInfoCoords}>
+                <Text style={styles.webInfoCoordText}>LAT: {marker.latitude.toFixed(5)}</Text>
+                <Text style={styles.webInfoCoordText}>LNG: {marker.longitude.toFixed(5)}</Text>
+              </View>
+            </View>
+
+            {/* Analyze Fire Risk Button matching Web MapSelector.tsx */}
+            <TouchableOpacity
+              style={[
+                styles.webAnalyzeButton,
+                isAnalyzing && { backgroundColor: "#cbd5e1" },
+              ]}
+              onPress={handleAnalyze}
+              disabled={isAnalyzing}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.webAnalyzeText, isAnalyzing && { color: "#94a3b8" }]}>
+                {isAnalyzing ? "ANALYZING..." : "ANALYZE FIRE RISK"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+
+
+
       </View>
     </Pressable>
   );
@@ -259,27 +390,46 @@ const styles = StyleSheet.create({
 
   searchContainer: {
     position: "absolute",
-    top: 56,
+    top: 54,
     left: 16,
-    width: "62%",
+    right: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    elevation: 5,
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    elevation: 8,
+    zIndex: 20,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowRadius: 8,
+  },
+
+  searchIconBtn: {
+    padding: 6,
+    marginRight: 6,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   searchInput: {
     flex: 1,
-    height: 34,
-    fontSize: 13,
-    color: "#000",
+    height: "100%",
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1e293b",
+    paddingVertical: 0,
+  },
+
+  clearBtn: {
+    padding: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
   },
 
   clearText: {
@@ -323,63 +473,82 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 
-  analyzeButton: {
+  // --- Exact Web InfoWindow & Bottom Container Styles ---
+  webBottomContainer: {
     position: "absolute",
-    bottom: 30,
-    alignSelf: "center",
-    backgroundColor: "#16a34a",
-    paddingHorizontal: 30,
-    paddingVertical: 14,
-    borderRadius: 12,
+    bottom: 24,
+    left: 20,
+    right: 20,
+    zIndex: 40,
+    gap: 12,
+  },
+  webInfoWindowCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     elevation: 5,
   },
-
-  analyzeText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-   calloutContainer: {
-    width: 200,
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-
-  calloutLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#059669", // emerald
-    letterSpacing: 1.5,
+  webInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
-
-  placeName: {
-    fontSize: 12,
+  webInfoBadge: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#059669",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  webInfoPlace: {
+    fontSize: 13,
     fontWeight: "600",
     color: "#334155",
     marginBottom: 8,
-    lineHeight: 16,
+    lineHeight: 18,
   },
-
-  coordsBox: {
+  webInfoCoords: {
     backgroundColor: "#f8fafc",
-    borderRadius: 10,
     padding: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#f1f5f9",
+    gap: 3,
   },
-
-  coordText: {
+  webInfoCoordText: {
     fontSize: 10,
     fontFamily: "monospace",
     color: "#475569",
   },
+
+  // --- Exact Web Analyze Fire Risk Button Styles ---
+  webAnalyzeButton: {
+    backgroundColor: "#059669",
+    paddingVertical: 18,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 8,
+    shadowColor: "#059669",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
+  webAnalyzeText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
 });
+
+
+

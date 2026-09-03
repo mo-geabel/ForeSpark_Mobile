@@ -1,10 +1,11 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { Pressable } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
+import { Map, History, FileText, LogOut, ShieldCheck } from "lucide-react-native";
 
 export default function TabsLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   return (
     <Tabs
@@ -17,12 +18,15 @@ export default function TabsLayout() {
           backgroundColor: "#fff",
           borderTopWidth: 1,
           borderTopColor: "#f1f5f9",
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
           elevation: 8,
           shadowColor: "#000",
           shadowOpacity: 0.06,
           shadowRadius: 8,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "700" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
@@ -30,11 +34,11 @@ export default function TabsLayout() {
         options={{
           title: "Map",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="map-outline" size={size} color={color} />
+            <Map size={size || 22} color={color} strokeWidth={2} />
           ),
           headerRight: () => (
             <Pressable onPress={logout} style={{ marginRight: 16 }}>
-              <Ionicons name="log-out-outline" size={24} color="#fff" />
+              <LogOut size={22} color="#fff" strokeWidth={2} />
             </Pressable>
           ),
         }}
@@ -45,7 +49,7 @@ export default function TabsLayout() {
         options={{
           title: "History",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
+            <History size={size || 22} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -55,9 +59,21 @@ export default function TabsLayout() {
         options={{
           title: "Docs",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
+            <FileText size={size || 22} color={color} strokeWidth={2} />
           ),
           headerTitle: "Model Documentation",
+        }}
+      />
+
+      <Tabs.Screen
+        name="AdminScreen"
+        options={{
+          title: "Admin",
+          href: isAdmin ? "/(tabs)/AdminScreen" : null,
+          tabBarIcon: ({ color, size }) => (
+            <ShieldCheck size={size || 22} color={color} strokeWidth={2} />
+          ),
+          headerTitle: "Admin Console",
         }}
       />
     </Tabs>
