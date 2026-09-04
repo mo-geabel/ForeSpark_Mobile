@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ForeSpark AI",
-    "slug": "forestspark-ai-mobile",
+    "slug": "forspark",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
