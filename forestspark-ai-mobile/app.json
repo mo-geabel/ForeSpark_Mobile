@@ -12,8 +12,8 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.forespark.ai",
-      "versionCode": 5,
+      "package": "com.forespark.app",
+      "versionCode": 7,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
