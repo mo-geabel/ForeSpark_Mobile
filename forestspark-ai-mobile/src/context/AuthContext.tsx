@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth as useClerkAuth, useUser as useClerkUser } from "@clerk/clerk-expo";
-import api from "../api/axios";
+import api, { setTokenGetter } from "../api/axios";
 import { AuthContextType, User } from "../types/auth";
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -13,6 +13,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Keep axios dynamic token getter synchronized with Clerk session
+  useEffect(() => {
+    if (isSignedIn && isClerkLoaded) {
+      setTokenGetter(async () => {
+        try {
+          const fresh = await getToken();
+          if (fresh) {
+            setToken(fresh);
+          }
+          return fresh;
+        } catch {
+          return null;
+        }
+      });
+    } else {
+      setTokenGetter(null);
+    }
+  }, [isSignedIn, isClerkLoaded, getToken]);
 
   const refreshUser = async () => {
     try {
@@ -193,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error("SignOut error:", err);
     }
+    setTokenGetter(null);
     await AsyncStorage.clear();
     setUser(null);
     setToken(null);

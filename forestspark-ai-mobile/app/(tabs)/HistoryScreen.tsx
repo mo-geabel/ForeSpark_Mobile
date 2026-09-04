@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -48,6 +48,7 @@ export default function HistoryScreen() {
 
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -60,9 +61,7 @@ export default function HistoryScreen() {
         : 'scans/my-history';
 
     try {
-      const response = await api.get(endpoint, {
-        headers: { 'x-auth-token': token || '' },
-      });
+      const response = await api.get(endpoint);
 
       const data = response.data;
       setScans(user?.role === 'admin' ? data.data : data);
@@ -70,7 +69,13 @@ export default function HistoryScreen() {
       console.error('Error fetching history:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchHistory();
   };
 
   const renderScanItem = ({ item }: { item: ScanRecord }) => {
@@ -205,7 +210,7 @@ export default function HistoryScreen() {
       </View>
 
       {/* Content */}
-      {loading ? (
+      {loading && !refreshing ? (
         <ActivityIndicator
           size="large"
           color="#059669"
@@ -218,6 +223,25 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#059669']}
+              tintColor="#059669"
+            />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+              <FileOutput size={48} color="#cbd5e1" />
+              <Text style={{ marginTop: 14, fontSize: 16, fontWeight: '700', color: '#64748b' }}>
+                No Scan History
+              </Text>
+              <Text style={{ marginTop: 6, fontSize: 13, color: '#94a3b8', textAlign: 'center', paddingHorizontal: 32 }}>
+                Pull down from the top to refresh, or run a new risk scan on the map to record fire predictions.
+              </Text>
+            </View>
+          }
         />
       )}
 

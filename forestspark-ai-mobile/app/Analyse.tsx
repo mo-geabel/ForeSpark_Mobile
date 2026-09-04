@@ -164,7 +164,7 @@ export default function AnalysisScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          bounces={false}
+          bounces={true}
         >
 
           {/* ══════════════════════════════════
