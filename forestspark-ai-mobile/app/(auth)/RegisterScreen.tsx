@@ -16,7 +16,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const { loginWithGoogle } = useAuth();
-  const { signUp, setActive, isLoaded } = useSignUp();
+  const { signUp, isLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
   
   const [name, setName] = useState("");
@@ -25,6 +25,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [code, setCode] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,7 +104,8 @@ export default function RegisterScreen() {
     // 2. Fallback to MongoDB Backend registration
     try {
       await api.post("/auth/register", { fullName: name, email: email, password: password });
-      router.replace("/LoginScreen");
+      setPendingVerification(false);
+      setRegistrationSuccess(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Registration failed");
     } finally {
@@ -128,8 +130,8 @@ export default function RegisterScreen() {
         });
 
         if (completeSignUp.status === "complete") {
-          await setActive({ session: completeSignUp.createdSessionId });
-          router.replace("/(tabs)");
+          setPendingVerification(false);
+          setRegistrationSuccess(true);
           return;
         } else {
           setError("Verification could not be completed. Please try again.");
@@ -180,13 +182,28 @@ export default function RegisterScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        {pendingVerification ? "Verify Email" : "Create Account"}
+        {registrationSuccess ? "Registration Successful! 🎉" : pendingVerification ? "Verify Email" : "Create Account"}
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {info ? <Text style={styles.info}>{info}</Text> : null}
+      {info && !registrationSuccess ? <Text style={styles.info}>{info}</Text> : null}
 
-      {pendingVerification ? (
+      {registrationSuccess ? (
+        <View style={{ alignItems: "center", marginVertical: 20 }}>
+          <Text style={{ fontSize: 14, color: "#475569", textAlign: "center", marginBottom: 16, lineHeight: 22 }}>
+            Your account for <Text style={{ fontWeight: "700", color: "#0f172a" }}>{email}</Text> has been created successfully.
+          </Text>
+          <Text style={{ fontSize: 13, color: "#059669", fontWeight: "600", textAlign: "center", marginBottom: 24 }}>
+            Please click below to proceed to the login page and sign in with your email and password.
+          </Text>
+          <Pressable
+            style={[styles.button, { width: "100%" }]}
+            onPress={() => router.replace("/LoginScreen")}
+          >
+            <Text style={styles.buttonText}>Click to Login</Text>
+          </Pressable>
+        </View>
+      ) : pendingVerification ? (
         <>
           <Input
             placeholder="6-digit Verification Code"
