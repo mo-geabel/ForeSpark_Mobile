@@ -176,6 +176,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.data.user);
   };
 
+  const updateProfile = async (fullName: string, phoneNumber: string) => {
+    const res = await api.put("/auth/profile", { fullName, phoneNumber });
+    if (res.data && res.data.user) {
+      const updatedUser = res.data.user;
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
+  };
+
   const logout = async () => {
     try {
       if (isSignedIn) {
@@ -191,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, loginWithGoogle, logout, refreshUser, loading }}
+      value={{ user, token, login, register, loginWithGoogle, updateProfile, logout, refreshUser, loading }}
     >
       {children}
     </AuthContext.Provider>

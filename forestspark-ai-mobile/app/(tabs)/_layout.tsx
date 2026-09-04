@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Pressable } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
-import { Map, History, FileText, LogOut, ShieldCheck } from "lucide-react-native";
+import { Map, History, FileText, LogOut, ShieldCheck, Settings } from "lucide-react-native";
 
 export default function TabsLayout() {
   const { logout, user } = useAuth();
@@ -74,6 +74,17 @@ export default function TabsLayout() {
             <ShieldCheck size={size || 22} color={color} strokeWidth={2} />
           ),
           headerTitle: "Admin Console",
+        }}
+      />
+
+      <Tabs.Screen
+        name="SettingsScreen"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <Settings size={size || 22} color={color} strokeWidth={2} />
+          ),
+          headerTitle: "Settings & Support",
         }}
       />
     </Tabs>

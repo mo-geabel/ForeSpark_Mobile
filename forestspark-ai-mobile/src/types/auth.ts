@@ -2,6 +2,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
+  phoneNumber?: string;
   role: "admin" | "user";
   isPaused?: boolean;
 }
@@ -12,6 +13,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (fullName: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  updateProfile: (fullName: string, phoneNumber: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   loading: boolean;
