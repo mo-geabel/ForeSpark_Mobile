@@ -14,7 +14,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const publishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
-  "pk_live_Y2xlcmsuZm9yZS1zcGFyay13NTkxLnZlcmNlbC5hcHAk";
+  "pk_live_Y2xlcmsuZm9yZXNwYXJrLm5ldCQ";
 
 export default function RootLayout() {
   return (
