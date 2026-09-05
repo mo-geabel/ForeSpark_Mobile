@@ -52,22 +52,31 @@ export default function HistoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchHistory();
+    if (user) {
+      fetchHistory();
+    } else {
+      setLoading(false);
+    }
   }, [user]);
 
   const fetchHistory = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const endpoint =
       user?.role === 'admin'
-        ? 'admin/master-history'
-        : 'scans/my-history';
+        ? '/admin/master-history'
+        : '/scans/my-history';
 
     try {
       const response = await api.get(endpoint);
 
       const data = response.data;
-      setScans(user?.role === 'admin' ? data.data : data);
-    } catch (err) {
-      console.error('Error fetching history:', err);
+      setScans(user?.role === 'admin' ? data.data : (Array.isArray(data) ? data : []));
+    } catch (err: any) {
+      console.error('Error fetching history:', err?.response?.data?.message || err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

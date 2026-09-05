@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (res.data) {
                 if (res.data.isPaused) {
                   await signOut();
-                  await AsyncStorage.clear();
+                  await AsyncStorage.multiRemove(["token", "user"]).catch(() => {});
                   setUser(null);
                   setToken(null);
                   setLoading(false);
@@ -213,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("SignOut error:", err);
     }
     setTokenGetter(null);
-    await AsyncStorage.clear();
+    await AsyncStorage.multiRemove(["token", "user"]).catch(() => {});
     setUser(null);
     setToken(null);
   };
