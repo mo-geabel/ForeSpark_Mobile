@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { User, Phone, Mail, Save, MessageSquare, LogOut, CheckCircle2 } from "lucide-react-native";
+import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY } from "../../src/utils/config";
 
 export default function SettingsScreen() {
   const { user, updateProfile, logout } = useAuth();
@@ -88,12 +89,45 @@ export default function SettingsScreen() {
     try {
       setSendingContact(true);
       setContactSuccess("");
-      // Simulate/Trigger contact support endpoint or feedback
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setContactSuccess("Message sent! Our support team will get in touch with you shortly.");
+
+      const templateParams = {
+        from_name: contactName.trim() || user?.fullName || "ForeSpark Mobile User",
+        name: contactName.trim() || user?.fullName || "ForeSpark Mobile User",
+        user_name: contactName.trim() || user?.fullName || "ForeSpark Mobile User",
+        reply_to: contactEmail.trim() || user?.email || "support@forespark.net",
+        from_email: contactEmail.trim() || user?.email || "support@forespark.net",
+        email: contactEmail.trim() || user?.email || "support@forespark.net",
+        user_email: contactEmail.trim() || user?.email || "support@forespark.net",
+        sender_email: contactEmail.trim() || user?.email || "support@forespark.net",
+        phone_number: contactPhone.trim(),
+        message: contactMessage.trim(),
+      };
+
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Origin": "https://www.forespark.net",
+        },
+        body: JSON.stringify({
+          service_id: EMAILJS_SERVICE_ID,
+          template_id: EMAILJS_TEMPLATE_ID,
+          user_id: EMAILJS_PUBLIC_KEY,
+          template_params: templateParams,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(errText || "Failed to send email");
+      }
+
+      setContactSuccess("Your message has been sent successfully! Our team will respond shortly.");
       setContactMessage("");
-      setTimeout(() => setContactSuccess(""), 4000);
-    } catch (err) {
+      setTimeout(() => setContactSuccess(""), 5000);
+      Alert.alert("Message Sent", "Thank you! Your message has been sent to the ForeSpark team.");
+    } catch (err: any) {
+      console.error("Contact send error:", err);
       Alert.alert("Sending Error", "Could not send message. Please try again.");
     } finally {
       setSendingContact(false);
