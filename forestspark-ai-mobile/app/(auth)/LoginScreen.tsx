@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   FileText,
   UserPlus,
+  Sparkles,
 } from "lucide-react-native";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -269,6 +270,16 @@ export default function LoginScreen() {
             >
               <FileText size={15} color="#64748b" strokeWidth={2} />
               <Text style={styles.docsLink}>View Model Documentation</Text>
+            </Pressable>
+
+            {/* Overview / Launching Welcome Link */}
+            <Pressable
+              onPress={() => router.push("/WelcomeScreen")}
+              disabled={loading || googleLoading}
+              style={styles.footerLinkRow}
+            >
+              <Sparkles size={15} color="#059669" strokeWidth={2} />
+              <Text style={styles.policyFooterLink}>ForeSpark AI Features & Overview</Text>
             </Pressable>
           </View>
         </ScrollView>

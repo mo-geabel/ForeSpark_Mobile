@@ -4,6 +4,10 @@ import { ActivityIndicator, View } from "react-native";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "../src/utils/tokenCache";
 import * as WebBrowser from "expo-web-browser";
+import * as SplashScreen from "expo-splash-screen";
+
+// Prevent the splash screen from auto-hiding before auth state and assets are ready
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Tells the web browser to immediately intercept and close the auth popup on return
 WebBrowser.maybeCompleteAuthSession();
