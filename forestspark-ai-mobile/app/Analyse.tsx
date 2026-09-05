@@ -276,11 +276,11 @@ export default function AnalysisScreen() {
                     {imageUri ? (
                       <Image
                         source={{ uri: imageUri }}
-                        style={StyleSheet.absoluteFillObject}
+                        style={StyleSheet.absoluteFill}
                         resizeMode="cover"
                       />
                     ) : (
-                      <View style={[StyleSheet.absoluteFillObject, styles.cellPlaceholder,
+                      <View style={[StyleSheet.absoluteFill, styles.cellPlaceholder,
                         isHigh ? { backgroundColor: "#fee2e2" } : { backgroundColor: "#dcfce7" }]}>
                         <ActivityIndicator color={isHigh ? "#ef4444" : "#10b981"} size="small" />
                       </View>
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   cellPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
   },
