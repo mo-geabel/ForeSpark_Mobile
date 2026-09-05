@@ -16,7 +16,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fore-spark-61em.vercel.app/api",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "148034546786-9ms1scbg693180d8jkc91v47j6pe7tf2.apps.googleusercontent.com",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWVhc3VyZWQtcmVkYmlyZC05NzI1LmNsZXJrLmFjY291bnRzLmRldiQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZm9yZS1zcGFyay13NTkxLnZlcmNlbC5hcHAk"
       }
     },
     "production": {
@@ -27,7 +27,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fore-spark-61em.vercel.app/api",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "148034546786-9ms1scbg693180d8jkc91v47j6pe7tf2.apps.googleusercontent.com",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_bWVhc3VyZWQtcmVkYmlyZC05NzI1LmNsZXJrLmFjY291bnRzLmRldiQ"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuZm9yZS1zcGFyay13NTkxLnZlcmNlbC5hcHAk"
       }
     }
   },
