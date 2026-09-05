@@ -14,6 +14,29 @@ import { User, Phone, Mail, Save, MessageSquare, LogOut, CheckCircle2 } from "lu
 
 export default function SettingsScreen() {
   const { user, updateProfile, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              await logout();
+            } finally {
+              setLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
@@ -226,9 +249,23 @@ export default function SettingsScreen() {
       </View>
 
       {/* --- SECTION 3: LOGOUT --- */}
-      <Pressable style={styles.logoutButton} onPress={logout}>
-        <LogOut size={20} color="#dc2626" />
-        <Text style={styles.logoutText}>Sign Out of Account</Text>
+      <Pressable
+        style={({ pressed }) => [
+          styles.logoutButton,
+          pressed && { opacity: 0.7 },
+          loggingOut && { opacity: 0.5 },
+        ]}
+        onPress={handleLogout}
+        disabled={loggingOut}
+      >
+        {loggingOut ? (
+          <ActivityIndicator size="small" color="#dc2626" />
+        ) : (
+          <>
+            <LogOut size={20} color="#dc2626" />
+            <Text style={styles.logoutText}>Sign Out of Account</Text>
+          </>
+        )}
       </Pressable>
     </ScrollView>
   );

@@ -1,11 +1,26 @@
-import { Tabs } from "expo-router";
-import { Pressable } from "react-native";
+import { Tabs, Redirect } from "expo-router";
+import { Pressable, Alert } from "react-native";
 import { useAuth } from "../../src/context/AuthContext";
 import { Map, History, FileText, LogOut, ShieldCheck, Settings } from "lucide-react-native";
 
 export default function TabsLayout() {
-  const { logout, user } = useAuth();
+  const { logout, user, loading } = useAuth();
   const isAdmin = user?.role === "admin";
+
+  if (!loading && !user) {
+    return <Redirect href="/(auth)" />;
+  }
+
+  const confirmLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: () => logout() }
+      ]
+    );
+  };
 
   return (
     <Tabs
@@ -37,7 +52,10 @@ export default function TabsLayout() {
             <Map size={size || 22} color={color} strokeWidth={2} />
           ),
           headerRight: () => (
-            <Pressable onPress={logout} style={{ marginRight: 16 }}>
+            <Pressable
+              onPress={confirmLogout}
+              style={({ pressed }) => [{ marginRight: 16 }, pressed && { opacity: 0.7 }]}
+            >
               <LogOut size={22} color="#fff" strokeWidth={2} />
             </Pressable>
           ),

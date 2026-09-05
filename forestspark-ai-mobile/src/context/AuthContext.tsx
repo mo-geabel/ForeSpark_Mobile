@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth as useClerkAuth, useUser as useClerkUser } from "@clerk/clerk-expo";
 import api, { setTokenGetter } from "../api/axios";
 import { AuthContextType, User } from "../types/auth";
+import { router } from "expo-router";
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
@@ -211,11 +212,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error("SignOut error:", err);
+    } finally {
+      setTokenGetter(null);
+      await AsyncStorage.multiRemove(["token", "user"]).catch(() => {});
+      setUser(null);
+      setToken(null);
+      setTimeout(() => {
+        try {
+          router.replace("/(auth)" as any);
+        } catch (navErr) {
+          console.error("Logout navigation error:", navErr);
+        }
+      }, 0);
     }
-    setTokenGetter(null);
-    await AsyncStorage.multiRemove(["token", "user"]).catch(() => {});
-    setUser(null);
-    setToken(null);
   };
 
   return (
