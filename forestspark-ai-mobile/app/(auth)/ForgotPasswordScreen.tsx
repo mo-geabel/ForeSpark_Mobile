@@ -36,13 +36,37 @@ export default function ForgotPasswordScreen() {
     try {
       setLoading(true);
       setError("");
-      await signIn.create({
-        strategy: "reset_password_email_code",
+
+      const signInAttempt = await signIn.create({
         identifier: email,
       });
 
-      setStep("verify_code");
-      setInfo(`Reset code sent to ${email}`);
+      const resetFactor = signInAttempt.supportedFirstFactors?.find(
+        (factor: any) => factor.strategy === "reset_password_email_code"
+      );
+
+      if (resetFactor && "emailAddressId" in resetFactor) {
+        await signIn.prepareFirstFactor({
+          strategy: "reset_password_email_code",
+          emailAddressId: (resetFactor as any).emailAddressId,
+        });
+        setStep("verify_code");
+        setInfo(`Reset code sent to ${email}`);
+      } else {
+        const emailCodeFactor = signInAttempt.supportedFirstFactors?.find(
+          (factor: any) => factor.strategy === "email_code"
+        );
+        if (emailCodeFactor && "emailAddressId" in emailCodeFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: "email_code",
+            emailAddressId: (emailCodeFactor as any).emailAddressId,
+          });
+          setStep("verify_code");
+          setInfo(`Verification code sent to ${email}`);
+        } else {
+          setError("Password reset is not available for this account. Please try signing in with Google.");
+        }
+      }
     } catch (err: any) {
       setError(err?.errors?.[0]?.message || "Failed to send reset code");
     } finally {
@@ -84,13 +108,21 @@ export default function ForgotPasswordScreen() {
       setLoading(true);
       setError("");
 
-      const result = await signIn.attemptFirstFactor({
-        strategy: "reset_password_email_code",
-        code,
-        password,
-      });
+      let result;
+      try {
+        result = await signIn.attemptFirstFactor({
+          strategy: "reset_password_email_code",
+          code,
+          password,
+        });
+      } catch (firstErr: any) {
+        result = await signIn.attemptFirstFactor({
+          strategy: "email_code",
+          code,
+        });
+      }
 
-      if (result.status === "complete") {
+      if (result && result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         router.replace("/(tabs)");
       } else {
@@ -193,7 +225,7 @@ export default function ForgotPasswordScreen() {
         )}
 
         <Pressable onPress={() => router.back()} disabled={loading}>
-          <Text style={styles.link}>? Back to Login</Text>
+          <Text style={styles.link}>← Back to Login</Text>
         </Pressable>
       </View>
     </TouchableWithoutFeedback>

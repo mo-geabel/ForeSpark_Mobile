@@ -97,8 +97,14 @@ export default function LoginScreen() {
         }
       } catch (clerkErr: any) {
         const clerkMsg = clerkErr?.errors?.[0]?.message;
+        const clerkCode = clerkErr?.errors?.[0]?.code;
         if (clerkMsg) {
           console.log("Clerk auth notice:", clerkMsg);
+        }
+        if (clerkCode === "strategy_for_user_invalid" || clerkMsg?.toLowerCase().includes("verification strategy")) {
+          setError("This account is linked to Google. Please tap 'Continue with Google' below, or use 'Forgot password?' to create a password.");
+          setLoading(false);
+          return;
         }
       }
     }
