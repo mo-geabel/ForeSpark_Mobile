@@ -11,13 +11,21 @@ import PolicyModal from "../../components/PolicyModal";
 
 import { useSignUp, useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
-  const { loginWithGoogle } = useAuth();
+  const { user, loginWithGoogle } = useAuth();
   const { signUp, isLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+
+  // Auto-redirect if user is logged in
+  useEffect(() => {
+    if (user) {
+      router.replace("/(tabs)");
+    }
+  }, [user]);
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -155,19 +163,30 @@ export default function RegisterScreen() {
       setError("");
 
       // 1. First try Clerk OAuth flow
-      const { createdSessionId, setActive: setOAuthActive } = await startOAuthFlow();
+      const redirectUrl = Linking.createURL("/oauth-native-callback", { scheme: "forestsparkaimobile" });
+      const { createdSessionId, setActive: setOAuthActive, signIn: oAuthSignIn } = await startOAuthFlow({ redirectUrl });
+
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      if (oAuthSignIn?.createdSessionId && setOAuthActive) {
+        await setOAuthActive({ session: oAuthSignIn.createdSessionId });
+        router.replace("/(tabs)");
         return;
       }
 
       // 2. Fallback to legacy Google Sign-In
       const token = await signInWithGoogle(async (mockToken) => {
         await loginWithGoogle(mockToken);
+        router.replace("/(tabs)");
       });
 
       if (token) {
         await loginWithGoogle(token);
+        router.replace("/(tabs)");
       }
     } catch (err: any) {
       if (err?.code !== "12501" && err?.message !== "Sign in cancelled") {

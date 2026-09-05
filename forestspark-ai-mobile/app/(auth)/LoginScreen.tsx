@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   ScrollView,
+  Image,
 } from "react-native";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../src/context/AuthContext";
@@ -18,6 +19,7 @@ import PolicyModal from "../../components/PolicyModal";
 import api from "../../src/api/axios";
 import { useSignIn, useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import {
   Flame,
   Mail,
@@ -34,7 +36,7 @@ import {
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
-  const { login, loginWithGoogle } = useAuth();
+  const { user, login, loginWithGoogle } = useAuth();
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
@@ -44,6 +46,13 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Automatically navigate into the app as soon as a user session is active
+  useEffect(() => {
+    if (user) {
+      router.replace("/(tabs)");
+    }
+  }, [user]);
 
   // Policy state
   const [policy, setPolicy] = useState<{ title: string; content: string; requireAcceptance: boolean; lastUpdated?: string } | null>(null);
@@ -83,6 +92,7 @@ export default function LoginScreen() {
         if (completeSignIn.status === "complete") {
           await setActive({ session: completeSignIn.createdSessionId });
           setLoading(false);
+          router.replace("/(tabs)");
           return;
         }
       } catch (clerkErr: any) {
@@ -96,6 +106,7 @@ export default function LoginScreen() {
     // 2. Fallback to MongoDB Backend Login
     try {
       await login(email, password);
+      router.replace("/(tabs)");
     } catch (err: any) {
       setError(err?.response?.data?.message || "Login failed");
     } finally {
@@ -109,19 +120,36 @@ export default function LoginScreen() {
       setError("");
 
       // 1. First try Clerk OAuth flow (works on Expo Go via web browser session)
-      const { createdSessionId, setActive: setOAuthActive } = await startOAuthFlow();
+      const redirectUrl = Linking.createURL("/oauth-native-callback", { scheme: "forestsparkaimobile" });
+      const { createdSessionId, setActive: setOAuthActive, signIn: oAuthSignIn } = await startOAuthFlow({ redirectUrl });
+
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      if (oAuthSignIn?.createdSessionId && setOAuthActive) {
+        await setOAuthActive({ session: oAuthSignIn.createdSessionId });
+        router.replace("/(tabs)");
+        return;
+      }
+
+      // If session is already created / signed in
+      if (isLoaded && signIn?.status === "complete") {
+        router.replace("/(tabs)");
         return;
       }
 
       // 2. Fallback to legacy Google Sign-In
       const token = await signInWithGoogle(async (mockToken) => {
         await loginWithGoogle(mockToken);
+        router.replace("/(tabs)");
       });
 
       if (token) {
         await loginWithGoogle(token);
+        router.replace("/(tabs)");
       }
     } catch (err: any) {
       if (err?.code !== "12501" && err?.message !== "Sign in cancelled") {
@@ -141,14 +169,18 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.container}>
-            {/* Brand Logo / Icon */}
+            {/* Brand Logo */}
             <View style={styles.brandIconContainer}>
-              <View style={styles.brandBadge}>
-                <Flame size={40} color="#059669" strokeWidth={2.4} />
+              <View style={styles.logoCard}>
+                <Image
+                  source={require("../../assets/images/icon.png")}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
             </View>
 
-            <Text style={styles.title}>ForestSpark AI</Text>
+            <Text style={styles.title}>ForeSpark AI</Text>
             <Text style={styles.subtitle}>Welcome back, sign in to continue</Text>
 
             {error ? (
@@ -308,20 +340,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  brandBadge: {
-    width: 76,
-    height: 76,
+  logoCard: {
+    width: 92,
+    height: 92,
     borderRadius: 24,
-    backgroundColor: "#ecfdf5",
-    borderWidth: 1.5,
-    borderColor: "#a7f3d0",
+    backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#059669",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  logoImage: {
+    width: 74,
+    height: 74,
   },
   title: {
     fontSize: 28,
