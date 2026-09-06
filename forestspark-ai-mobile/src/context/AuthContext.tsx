@@ -65,8 +65,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Fast local storage hydration & watchdog timer to prevent app startup freeze
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateLocalAuth = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem("token");
+        const storedUser = await AsyncStorage.getItem("user");
+        if (storedToken && storedUser && isMounted) {
+          const parsedUser = JSON.parse(storedUser);
+          setToken(storedToken);
+          setUser(parsedUser);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.log("Local auth hydration notice:", err);
+      }
+    };
+
+    hydrateLocalAuth();
+
+    // Absolute fallback: ensure loading is NEVER stuck for more than 1.5 seconds
+    const watchdogTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoading(false);
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(watchdogTimer);
+    };
+  }, []);
+
   // Sync Clerk authentication state
   useEffect(() => {
+    let isMounted = true;
+
     const syncAuthState = async () => {
       if (!isClerkLoaded) return;
 
@@ -83,93 +119,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: clerkUser.id,
             fullName,
             email: primaryEmail,
-            role: "user",
+            role: (clerkUser.publicMetadata?.role as "user" | "admin") || "user",
             isPaused: false,
           };
 
           if (sessionToken) {
-            await AsyncStorage.setItem("token", sessionToken);
-            setToken(sessionToken);
+            await AsyncStorage.setItem("token", sessionToken).catch(() => {});
+            if (isMounted) setToken(sessionToken);
 
-            // Fetch true role and pause status from backend
-            try {
-              const res = await api.get("/auth/user", {
-                headers: { 
-                  "x-auth-token": sessionToken,
-                  "Authorization": `Bearer ${sessionToken}`,
-                  "x-user-email": primaryEmail
-                },
-              });
-              if (res.data) {
+            // Fetch backend role/pause status asynchronously in background (non-blocking)
+            api.get("/auth/user", {
+              headers: { 
+                "x-auth-token": sessionToken,
+                "Authorization": `Bearer ${sessionToken}`,
+                "x-user-email": primaryEmail
+              },
+              timeout: 6000,
+            }).then(async (res) => {
+              if (res.data && isMounted) {
                 if (res.data.isPaused) {
                   await signOut();
                   await AsyncStorage.multiRemove(["token", "user"]).catch(() => {});
                   setUser(null);
                   setToken(null);
-                  setLoading(false);
                   return;
                 }
 
-                appUser = {
+                const updatedUser = {
                   id: res.data._id || clerkUser.id,
                   fullName: res.data.fullName || fullName,
                   email: res.data.email || primaryEmail,
                   role: res.data.role || "user",
                   isPaused: !!res.data.isPaused,
                 };
+                await AsyncStorage.setItem("user", JSON.stringify(updatedUser)).catch(() => {});
+                setUser(updatedUser);
               }
-            } catch (profileErr: any) {
-              console.log("Could not fetch backend profile on Clerk sync:", profileErr?.message || profileErr);
-            }
+            }).catch(() => {});
           }
-          await AsyncStorage.setItem("user", JSON.stringify(appUser));
-          setUser(appUser);
+
+          await AsyncStorage.setItem("user", JSON.stringify(appUser)).catch(() => {});
+          if (isMounted) {
+            setUser(appUser);
+          }
         } catch (err) {
           console.error("Error syncing Clerk auth session:", err);
         }
       } else {
-        // Check for local legacy token if not signed in through Clerk
-        const storedToken = await AsyncStorage.getItem("token");
-        const storedUser = await AsyncStorage.getItem("user");
-
-        if (storedToken && storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            setToken(storedToken);
-            setUser(parsedUser);
-
-            // Background sync latest role and pause status
-            api.get("/auth/user", { headers: { "x-auth-token": storedToken } })
-              .then(async (res) => {
-                if (res.data) {
-                  if (res.data.isPaused) {
-                    await logout();
-                    return;
-                  }
-                  const refreshed: User = {
-                    id: res.data._id || parsedUser.id,
-                    fullName: res.data.fullName || parsedUser.fullName,
-                    email: res.data.email || parsedUser.email,
-                    role: res.data.role || "user",
-                    isPaused: !!res.data.isPaused,
-                  };
-                  await AsyncStorage.setItem("user", JSON.stringify(refreshed));
-                  setUser(refreshed);
-                }
-              })
-              .catch(() => {});
-          } catch {
-            await logout();
+        // Not signed in through Clerk, verify if local session exists
+        try {
+          const storedToken = await AsyncStorage.getItem("token");
+          const storedUser = await AsyncStorage.getItem("user");
+          if (!storedToken || !storedUser) {
+            if (isMounted) {
+              setUser(null);
+              setToken(null);
+            }
           }
-        } else {
-          setUser(null);
-          setToken(null);
-        }
+        } catch {}
       }
-      setLoading(false);
+
+      if (isMounted) {
+        setLoading(false);
+      }
     };
 
     syncAuthState();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isSignedIn, clerkUser, isClerkLoaded]);
 
   const login = async (email: string, password: string) => {

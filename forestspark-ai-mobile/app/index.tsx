@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 import { useAuth } from "../src/context/AuthContext";
 import { View, Text, ActivityIndicator, StyleSheet, Image, StatusBar } from "react-native";
@@ -6,17 +6,21 @@ import * as SplashScreen from "expo-splash-screen";
 
 export default function Index() {
   const { user, loading } = useAuth();
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      const timer = setTimeout(() => {
-        SplashScreen.hideAsync().catch(() => {});
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [loading]);
+    // Dismiss native splash screen promptly
+    SplashScreen.hideAsync().catch(() => {});
 
-  if (loading) {
+    // Maximum 1.2 second loading display so the user never gets stuck
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading && !timedOut) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />

@@ -6,6 +6,8 @@ import { tokenCache } from "../src/utils/tokenCache";
 import * as WebBrowser from "expo-web-browser";
 import * as SplashScreen from "expo-splash-screen";
 
+import { useEffect } from "react";
+
 // Prevent the splash screen from auto-hiding before auth state and assets are ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -17,6 +19,13 @@ const publishableKey =
   "pk_live_Y2xlcmsuZm9yZXNwYXJrLm5ldCQ";
 
 export default function RootLayout() {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <AuthProvider>
