@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.forespark.app",
-      "versionCode": 8,
+      "versionCode": 10,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
