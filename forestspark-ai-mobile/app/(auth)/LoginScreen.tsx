@@ -106,6 +106,11 @@ export default function LoginScreen() {
           setLoading(false);
           return;
         }
+        if (clerkCode === "session_exists" || clerkCode === "identifier_already_signed_in") {
+          setLoading(false);
+          router.replace("/(tabs)");
+          return;
+        }
       }
     }
 

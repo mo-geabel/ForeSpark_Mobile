@@ -12,12 +12,13 @@ import PolicyModal from "../../components/PolicyModal";
 import { useSignUp, useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const { user, loginWithGoogle } = useAuth();
-  const { signUp, isLoaded } = useSignUp();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
   // Auto-redirect if user is logged in
@@ -111,7 +112,13 @@ export default function RegisterScreen() {
 
     // 2. Fallback to MongoDB Backend registration
     try {
-      await api.post("/auth/register", { fullName: name, email: email, password: password });
+      const regRes = await api.post("/auth/register", { fullName: name, email: email, password: password });
+      if (regRes.data?.token && regRes.data?.user) {
+        await AsyncStorage.setItem("token", regRes.data.token);
+        await AsyncStorage.setItem("user", JSON.stringify(regRes.data.user));
+        router.replace("/(tabs)");
+        return;
+      }
       setPendingVerification(false);
       setRegistrationSuccess(true);
     } catch (err: any) {
@@ -138,6 +145,11 @@ export default function RegisterScreen() {
         });
 
         if (completeSignUp.status === "complete") {
+          if (setActive && completeSignUp.createdSessionId) {
+            await setActive({ session: completeSignUp.createdSessionId });
+            router.replace("/(tabs)");
+            return;
+          }
           setPendingVerification(false);
           setRegistrationSuccess(true);
           return;
