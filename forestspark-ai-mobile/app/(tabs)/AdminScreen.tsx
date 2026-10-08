@@ -561,7 +561,7 @@ These policies may be revised periodically by administrators. Continued use of F
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#059669" />
+      <StatusBar barStyle="light-content" />
 
       {/* Decorative Background Accent */}
       <View style={styles.headerBackground} />

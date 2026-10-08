@@ -43,15 +43,15 @@ const performanceMetrics = [
 ];
 
 const gridWeights = [
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "CENTER", weight: "40%", type: "center" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "CENTER", weight: "18.5%", type: "center" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
 ];
 
 const CELL = (width - 48 - 8) / 3;
@@ -133,7 +133,7 @@ function MetricRow({ label, value, color }: { label: string; value: string; colo
 export default function DocumentationScreen() {
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -316,9 +316,9 @@ export default function DocumentationScreen() {
           {/* Legend */}
           <View style={styles.wLegend}>
             {[
-              { color: "#fb923c", label: "Center — 40%" },
-              { color: "#34d399", label: "Edge — 10% each" },
-              { color: "#93c5fd", label: "Corner — 5% each" },
+              { color: "#fb923c", label: "Center — 18.5%" },
+              { color: "#34d399", label: "Edge — 11.2% each" },
+              { color: "#93c5fd", label: "Corner — 9.1% each" },
             ].map((l) => (
               <View key={l.label} style={styles.wLegendItem}>
                 <View style={[styles.wDot, { backgroundColor: l.color }]} />
@@ -330,7 +330,7 @@ export default function DocumentationScreen() {
           {/* Steps */}
           {[
             { n: "1", title: "Spatial Context", text: "9 satellite tiles fetched around the target — total coverage ~3.7 km²." },
-            { n: "2", title: "Weighted Aggregation", text: "Center=40%, Edge neighbors=10%, Corners=5%. Sums to 100%." },
+            { n: "2", title: "Weighted Aggregation", text: "Exponential distance decay (λ=0.5): Center=18.5%, Edge neighbors=11.2%, Corners=9.1%. Sums to 100%." },
             { n: "3", title: "Robust Predictions", text: "Reduces noise from single-tile bias and incorporates environmental context." },
           ].map((s) => (
             <View key={s.n} style={styles.step}>

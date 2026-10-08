@@ -23,7 +23,7 @@ export default function Index() {
   if (loading && !timedOut) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <StatusBar barStyle="dark-content" />
         <View style={styles.content}>
           <View style={styles.logoCard}>
             <Image
