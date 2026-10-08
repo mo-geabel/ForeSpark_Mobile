@@ -152,7 +152,7 @@ export default function AnalysisScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle="dark-content" />
 
 
       <KeyboardAvoidingView

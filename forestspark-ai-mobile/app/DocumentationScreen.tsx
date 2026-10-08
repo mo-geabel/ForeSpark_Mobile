@@ -50,15 +50,15 @@ const datasetComposition = [
 
 // 3×3 grid weights data
 const gridWeights = [
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "CENTER", weight: "40%", type: "center" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
-  { label: "Edge",   weight: "10%", type: "edge" },
-  { label: "Corner", weight: "5%",  type: "corner" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "CENTER", weight: "18.5%", type: "center" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
+  { label: "Edge",   weight: "11.2%", type: "edge" },
+  { label: "Corner", weight: "9.1%", type: "corner" },
 ];
 
 const CELL = (width - 48 - 12) / 3;
@@ -260,15 +260,15 @@ export default function DocumentationScreen() {
           <View style={styles.gridLegend}>
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: "#f97316", width: 14, height: 14, borderRadius: 3 }]} />
-              <Text style={styles.legendText}>Center 40%</Text>
+              <Text style={styles.legendText}>Center 18.5%</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: "#bbf7d0", width: 14, height: 14, borderRadius: 3 }]} />
-              <Text style={styles.legendText}>Edge 10%</Text>
+              <Text style={styles.legendText}>Edge 11.2%</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: "#bfdbfe", width: 14, height: 14, borderRadius: 3 }]} />
-              <Text style={styles.legendText}>Corner 5%</Text>
+              <Text style={styles.legendText}>Corner 9.1%</Text>
             </View>
           </View>
         </Card>
@@ -277,7 +277,7 @@ export default function DocumentationScreen() {
         <SectionTitle>How It Works</SectionTitle>
         {[
           { n: "1", title: "Spatial Context", text: "Instead of one patch, the system evaluates a 3×3 grid around the selected location." },
-          { n: "2", title: "Weighted Aggregation", text: "Center patch = 40%, edge neighbors = 10% each, corners = 5% each. Total = 100%." },
+          { n: "2", title: "Weighted Aggregation", text: "Weights decay with distance (e^−0.5d): center = 18.5%, edge neighbors = 11.2% each, corners = 9.1% each. Total = 100%." },
           { n: "3", title: "Robust Predictions", text: "Covers ~3.7 km² total area, reducing noise and incorporating environmental context." },
         ].map((step) => (
           <View key={step.n} style={styles.stepRow}>
