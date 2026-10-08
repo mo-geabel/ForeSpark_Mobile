@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   ArrowLeft,
   FileOutput,
@@ -51,13 +51,17 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchHistory();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+  // Reload whenever the tab gains focus so newly saved scans appear
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchHistory();
+      } else {
+        setLoading(false);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user])
+  );
 
   const fetchHistory = async () => {
     if (!user) {
@@ -89,9 +93,7 @@ export default function HistoryScreen() {
   };
 
   const renderScanItem = ({ item }: { item: ScanRecord }) => {
-    const isHighRisk = item.prediction.riskLevel
-      .toLowerCase()
-      .includes('high');
+    const isHighRisk = /high|critical/i.test(item.prediction.riskLevel);
 
     const hasFeedback = item.userFeedback?.isCorrect !== null;
 
@@ -145,7 +147,7 @@ export default function HistoryScreen() {
           </View>
 
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.statLabel}>ACCURACY</Text>
+            <Text style={styles.statLabel}>RISK SCORE</Text>
             <Text style={styles.accuracyValue}>
               {(item.prediction.accuracy * 100).toFixed(1)}%
             </Text>

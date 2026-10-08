@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   Alert,
   TextInput,
@@ -21,12 +21,10 @@ import { useAuth } from "../src/context/AuthContext";
 import api from "@/src/api/axios";
 import * as Location from "expo-location";
 
-const { width, height } = Dimensions.get("window");
-
 const GRID_MARGIN = 16;
 const GRID_GAP = 8;
-const GRID_CONTAINER_WIDTH = width - GRID_MARGIN * 2;
-const CELL_SIZE = (GRID_CONTAINER_WIDTH - GRID_GAP * 2) / 3;
+// Cap the grid on tablets / landscape so tiles stay a sensible size
+const GRID_MAX_WIDTH = 520;
 
 const DIRECTION_LABELS: Record<string, string> = {
   NW: "NW", N: "N", NE: "NE",
@@ -59,6 +57,9 @@ export default function AnalysisScreen() {
   const { scan } = useLocalSearchParams();
   const router = useRouter();
   const { token } = useAuth();
+  const { width } = useWindowDimensions();
+  const gridWidth = Math.min(width, GRID_MAX_WIDTH);
+  const cellSize = Math.floor((gridWidth - GRID_MARGIN * 2 - GRID_GAP * 2) / 3);
 
   const data: ScanData | null = scan ? JSON.parse(scan as string) : null;
 
@@ -254,9 +255,11 @@ export default function AnalysisScreen() {
             </View>
 
             {/* 3×3 Rounded Card Grid */}
-            <View style={styles.imageGrid}>
+            <View style={[styles.imageGrid, { width: gridWidth, alignSelf: "center" }]}>
               {data.grid_data.map((point, i) => {
-                const pct = point.individual_prob * 100;
+                // Tiles whose imagery failed to load have no probability
+                const hasProb = typeof point.individual_prob === "number";
+                const pct = hasProb ? point.individual_prob * 100 : 0;
                 const isHigh = pct > 40;
                 const imageUri = getImageUri(point);
                 const isSelected = selectedCell?.label === point.label;
@@ -266,6 +269,7 @@ export default function AnalysisScreen() {
                     key={i}
                     style={[
                       styles.cell,
+                      { width: cellSize, height: cellSize },
                       isSelected && styles.cellSelected,
                       isHigh ? styles.cellHighRiskBorder : styles.cellLowRiskBorder,
                     ]}
@@ -303,7 +307,7 @@ export default function AnalysisScreen() {
                     {/* Risk % bottom badge */}
                     <View style={[styles.cellPctBadge, isHigh ? styles.cellPctBadgeHigh : styles.cellPctBadgeLow]}>
                       <Text style={[styles.cellPct, isHigh ? styles.cellPctTextHigh : styles.cellPctTextLow]}>
-                        {pct.toFixed(0)}%
+                        {hasProb ? `${pct.toFixed(0)}%` : "N/A"}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -340,7 +344,7 @@ export default function AnalysisScreen() {
                   <Text style={[styles.detailVal, {
                     color: selectedCell.individual_prob > 0.4 ? "#ef4444" : "#10b981"
                   }]}>
-                    {(selectedCell.individual_prob * 100).toFixed(1)}%
+                    {((selectedCell.individual_prob ?? 0) * 100).toFixed(1)}%
                   </Text>
                 </View>
               </View>
@@ -530,8 +534,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
