@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -20,7 +19,6 @@ import {
   CheckCircle2,
 } from "lucide-react-native";
 
-const { width } = Dimensions.get("window");
 
 const trainingMetrics = [
   { epoch: "1",  trainAcc: 96.5, valAcc: 97.9, trainLoss: 0.092, valLoss: 0.059 },
@@ -61,7 +59,6 @@ const gridWeights = [
   { label: "Corner", weight: "9.1%", type: "corner" },
 ];
 
-const CELL = (width - 48 - 12) / 3;
 
 function SectionTitle({ children }: { children: string }) {
   return <Text style={styles.sectionTitle}>{children}</Text>;
@@ -107,7 +104,6 @@ function EpochSparkline({ dataKey, color }: { dataKey: "trainAcc" | "valAcc" | "
   const values = trainingMetrics.map((m) => m[dataKey] as number);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const chartW = width - 80;
   const chartH = 60;
 
   return (
@@ -458,9 +454,10 @@ const styles = StyleSheet.create({
   datasetPct: { fontSize: 11, fontWeight: "800", color: "#334155", width: 32, textAlign: "right" },
 
   // 3×3 grid
-  miniGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginVertical: 14 },
+  // Percentage cells keep the 3×3 layout at any screen width / orientation
+  miniGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginVertical: 14, width: "100%", maxWidth: 420, alignSelf: "center" },
   miniCell: {
-    width: CELL, height: CELL,
+    width: "31.5%", aspectRatio: 1,
     borderRadius: 10,
     borderWidth: 2,
     justifyContent: "center", alignItems: "center",

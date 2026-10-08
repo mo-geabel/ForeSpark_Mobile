@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   StatusBar,
 } from "react-native";
 import {
@@ -19,7 +18,6 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
-const { width } = Dimensions.get("window");
 
 // ─── Data ────────────────────────────────
 const trainingMetrics = [
@@ -54,7 +52,6 @@ const gridWeights = [
   { label: "Corner", weight: "9.1%", type: "corner" },
 ];
 
-const CELL = (width - 48 - 8) / 3;
 
 // ─── Sparkline bar ───────────────────────
 function Sparkline({ data, color }: { data: number[]; color: string }) {
@@ -500,9 +497,10 @@ const styles = StyleSheet.create({
   statCellVal: { fontSize: 14, fontWeight: "800", color: "#0f172a" },
 
   // ─── Spatial grid ───
-  weightGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginVertical: 14 },
+  // Percentage cells keep the 3×3 layout at any screen width / orientation
+  weightGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginVertical: 14, width: "100%", maxWidth: 420, alignSelf: "center" },
   weightCell: {
-    width: CELL, height: CELL, borderRadius: 12,
+    width: "31.5%", aspectRatio: 1, borderRadius: 12,
     borderWidth: 2, justifyContent: "center", alignItems: "center",
   },
   weightCellCenter: { backgroundColor: "#fb923c", borderColor: "#ea580c" },
